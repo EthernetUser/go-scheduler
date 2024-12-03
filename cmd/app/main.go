@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"go-scheduler/cmd/docs"
 	"go-scheduler/internal/config"
 	"go-scheduler/internal/database/postgres"
@@ -9,7 +10,11 @@ import (
 	"go-scheduler/internal/handlers/jobs/delete"
 	"go-scheduler/internal/handlers/jobs/get"
 	"go-scheduler/internal/pkg/cronScheduler"
+	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/swaggo/files"
@@ -37,7 +42,25 @@ func main() {
 		Handler: router,
 	}
 
-	server.ListenAndServe()
+	go func () {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<- quit
+	log.Println("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.HttpServer.ShutdownTimeout)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Fatal("Server forced to shutdown:", err)
+	}
+
+	log.Println("Server stopped")
 }
 
 

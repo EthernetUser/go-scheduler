@@ -13,6 +13,7 @@ type HttpServer struct {
 	Addr string
 	ReadTimeout time.Duration
 	WriteTimeout time.Duration
+	ShutdownTimeout time.Duration
 }
 
 type Database struct {
@@ -52,6 +53,7 @@ func MustLoad() *Config {
 			Addr: getEnv("HTTP_SERVER_ADDR", ":8080"),
 			ReadTimeout: parseTimeDurationFromEnv("HTTP_SERVER_READ_TIMEOUT", "10s"),
 			WriteTimeout: parseTimeDurationFromEnv("HTTP_SERVER_WRITE_TIMEOUT", "10s"),
+			ShutdownTimeout: parseTimeDurationFromEnv("HTTP_SERVER_SHUTDOWN_TIMEOUT", "10s"),
 		},
 		Database: Database{
 			Host: getEnv("DB_HOST", "localhost"),
