@@ -7,11 +7,15 @@ import (
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
 	"go-scheduler/internal/jobs"
+	"go-scheduler/internal/worker"
+	"go-scheduler/internal/worker/executor"
+	"go-scheduler/internal/worker/scheduler"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -28,6 +32,7 @@ func main() {
 
 	jobs := jobs.New(postgres)
 
+	initWorker(postgres)
 	router := initRouterV1(jobs)
 
 	server := &http.Server{
@@ -60,6 +65,13 @@ func main() {
 	}
 
 	log.Println("Server stopped")
+}
+
+func initWorker(postgres *postgres.Postgres) *worker.Worker {
+	cron := scheduler.NewRobfigCronScheduler()
+	httpExecutor := executor.NewHTTPExecutor(30 * time.Second)
+
+	return worker.New(postgres, httpExecutor, 2*time.Minute, cron)
 }
 
 func initRouterV1(jobs *jobs.Jobs) *gin.Engine {
