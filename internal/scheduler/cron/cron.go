@@ -1,4 +1,4 @@
-package cronScheduler
+package cron
 
 import (
 	"fmt"

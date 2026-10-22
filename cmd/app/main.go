@@ -7,7 +7,6 @@ import (
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
 	"go-scheduler/internal/jobs"
-	"go-scheduler/internal/pkg/cronScheduler"
 	"log"
 	"net/http"
 	"os"
@@ -27,9 +26,7 @@ func main() {
 		panic(err)
 	}
 
-	scheduler := cronScheduler.New()
-
-	jobs := jobs.New(postgres, scheduler)
+	jobs := jobs.New(postgres)
 
 	router := initRouterV1(jobs)
 

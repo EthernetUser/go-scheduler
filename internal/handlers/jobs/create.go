@@ -41,11 +41,11 @@ func CreateCreateHandler(jobs *jobsService.Jobs) gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		id, err := jobs.CreateJob(ctx, parsedJob)
+		err := jobs.CreateJob(ctx, parsedJob)
 		if err != nil {
 			ctx.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		ctx.JSON(200, gin.H{"id": id})
+		ctx.JSON(200, gin.H{"message": "success"})
 	}
 }
