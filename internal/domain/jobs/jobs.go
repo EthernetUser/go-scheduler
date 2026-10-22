@@ -1,53 +1,31 @@
 package jobs
 
-type Db interface {
-	InsertJob(JobForCreation) error
-	GetJobs() ([]Job, error)
-	GetJob(int) (Job, error)
-	UpdateJob(Job) error
-	DeleteJob(int) error
-}
+import "context"
 
 type Scheduler interface {
 	AddJob(JobForCreation) (int, error)
 	DeleteJob(int) error
 }
 
-type JobForCreation struct {
-	Name        string
-	Description string
-	Cron        string
-	Url         string
-}
-
-type Job struct {
-	Id          int
-	Name        string
-	Description string
-	Cron        string
-	CronId      int
-	Url         string
-}
-
 type Jobs struct {
-	db        Db
-	scheduler Scheduler
+	respository Repository
+	scheduler   Scheduler
 }
 
-func New(db Db, scheduler Scheduler) *Jobs {
+func New(repository Repository, scheduler Scheduler) *Jobs {
 	return &Jobs{
-		db:        db,
-		scheduler: scheduler,
+		respository: repository,
+		scheduler:   scheduler,
 	}
 }
 
-func (j *Jobs) CreateJob(job JobForCreation) (int, error) {
+func (j *Jobs) CreateJob(ctx context.Context, job JobForCreation) (int, error) {
 	id, err := j.scheduler.AddJob(job)
 	if err != nil {
 		return 0, err
 	}
 
-	err = j.db.InsertJob(job)
+	err = j.respository.InsertJob(ctx, job)
 	if err != nil {
 		j.scheduler.DeleteJob(id)
 		return 0, err
@@ -56,8 +34,8 @@ func (j *Jobs) CreateJob(job JobForCreation) (int, error) {
 	return id, nil
 }
 
-func (j *Jobs) DeleteJob(id int) error {
-	job, err := j.db.GetJob(id)
+func (j *Jobs) DeleteJob(ctx context.Context, id int) error {
+	job, err := j.respository.GetJob(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -66,9 +44,9 @@ func (j *Jobs) DeleteJob(id int) error {
 	if err != nil {
 		return err
 	}
-	return j.db.DeleteJob(id)
+	return j.respository.DeleteJob(ctx, id)
 }
 
-func (j *Jobs) GetJobs() ([]Job, error) {
-	return j.db.GetJobs()
+func (j *Jobs) GetJobs(ctx context.Context) ([]Job, error) {
+	return j.respository.GetJobs(ctx)
 }
