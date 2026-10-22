@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"go-scheduler/internal/config"
-	domainJobs "go-scheduler/internal/domain/jobs"
+	domainJobs "go-scheduler/internal/jobs"
 
 	_ "github.com/lib/pq"
 )

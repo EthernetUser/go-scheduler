@@ -1,7 +1,7 @@
 package create
 
 import (
-	jobsService "go-scheduler/internal/domain/jobs"
+	jobsService "go-scheduler/internal/jobs"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,23 +14,23 @@ type JobRequest struct {
 }
 
 type JobResponse struct {
-	Id          int    `json:"id"`
+	Id int `json:"id"`
 }
 
 //	@BasePath	/api/v1
 
-//	@Summary	Add a new job
-//	@ID			create-job
-//	@Accept		json
-//	@Produce	json
-//	@Param		request	body		JobRequest	true	"Some ID"
-//	@Success	200		{object}	JobResponse		"ok"
-//	@Router		/jobs [post]
+// @Summary	Add a new job
+// @ID			create-job
+// @Accept		json
+// @Produce	json
+// @Param		request	body		JobRequest	true	"Some ID"
+// @Success	200		{object}	JobResponse	"ok"
+// @Router		/jobs [post]
 func New(jobs *jobsService.Jobs) gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(ctx *gin.Context) {
 		var job JobRequest
-		if err := c.BindJSON(&job); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+		if err := ctx.BindJSON(&job); err != nil {
+			ctx.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -41,11 +41,11 @@ func New(jobs *jobsService.Jobs) gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		id, err := jobs.CreateJob(parsedJob)
+		id, err := jobs.CreateJob(ctx, parsedJob)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			ctx.JSON(400, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"id": id})
+		ctx.JSON(200, gin.H{"id": id})
 	}
 }
