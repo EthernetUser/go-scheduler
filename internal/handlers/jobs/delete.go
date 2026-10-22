@@ -1,4 +1,4 @@
-package delete
+package handlers
 
 import (
 	jobsService "go-scheduler/internal/jobs"
@@ -16,7 +16,7 @@ import (
 // @Param		jobId	path		string	true	"Some ID"
 // @Success	200		{string}	string	"ok"
 // @Router		/jobs/{jobId} [delete]
-func New(jobs *jobsService.Jobs) gin.HandlerFunc {
+func CreateDeleteHandler(jobs *jobsService.Jobs) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		jobId := ctx.Param("jobId")
 		if jobId == "" {

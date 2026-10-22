@@ -5,9 +5,7 @@ import (
 	"go-scheduler/cmd/docs"
 	"go-scheduler/internal/config"
 	"go-scheduler/internal/database/postgres"
-	"go-scheduler/internal/handlers/jobs/create"
-	"go-scheduler/internal/handlers/jobs/delete"
-	"go-scheduler/internal/handlers/jobs/get"
+	jobHandlers "go-scheduler/internal/handlers/jobs"
 	"go-scheduler/internal/jobs"
 	"go-scheduler/internal/pkg/cronScheduler"
 	"log"
@@ -74,9 +72,9 @@ func initRouterV1(jobs *jobs.Jobs) *gin.Engine {
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", create.New(jobs))
-		v1.DELETE("/jobs/:jobId", delete.New(jobs))
-		v1.GET("/jobs", get.New(jobs))
+		v1.POST("/jobs", jobHandlers.CreateCreateHandler(jobs))
+		v1.DELETE("/jobs/:jobId", jobHandlers.CreateDeleteHandler(jobs))
+		v1.GET("/jobs", jobHandlers.CreateGetHandler(jobs))
 	}
 	return router
 }

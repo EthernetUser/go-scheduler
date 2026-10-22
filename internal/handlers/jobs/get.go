@@ -1,4 +1,4 @@
-package get
+package handlers
 
 import (
 	jobsService "go-scheduler/internal/jobs"
@@ -18,7 +18,7 @@ type GetJobsResponse struct {
 // @Produce	json
 // @Success	200	{object}	GetJobsResponse	"ok"
 // @Router		/jobs [get]
-func New(jobs *jobsService.Jobs) gin.HandlerFunc {
+func CreateGetHandler(jobs *jobsService.Jobs) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		jobs, err := jobs.GetJobs(ctx)
 		if err != nil {
