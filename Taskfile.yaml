@@ -9,14 +9,14 @@ tasks:
     desc: "run server"
     cmds:
       - go run cmd/app/main.go
-  compose-up:
+  dockerup:
     desc: "run docker compose"
     cmds:
-      - docker-compose up -d
-  compose-down:
+      - docker compose up -d
+  dockerdown:
     desc: "stop docker compose"
     cmds:
-      - docker-compose down
+      - docker compose down
   swagger:
     desc: "generate swagger docs"
     cmds:
