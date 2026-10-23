@@ -14,7 +14,7 @@ type JobRequest struct {
 }
 
 type JobResponse struct {
-	Id int `json:"id"`
+	Message string `json:"message"`
 }
 
 //	@BasePath	/api/v1

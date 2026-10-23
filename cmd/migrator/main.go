@@ -46,7 +46,6 @@ func main() {
 		databaseConfig.Username, databaseConfig.Password,
 		databaseConfig.Host, databaseConfig.Port, databaseConfig.Database)
 
-
 	m, err := migrate.New("file://"+migrationPath, dbURL)
 
 	if err != nil {
