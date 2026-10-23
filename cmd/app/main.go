@@ -6,10 +6,10 @@ import (
 	"go-scheduler/internal/config"
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
-	"go-scheduler/internal/jobs"
-	"go-scheduler/internal/worker"
-	"go-scheduler/internal/worker/executor"
-	"go-scheduler/internal/worker/scheduler"
+	jobService "go-scheduler/internal/jobs"
+	appWorker "go-scheduler/internal/worker"
+	jobExecutor "go-scheduler/internal/worker/executor"
+	robfigcron "go-scheduler/internal/worker/scheduler"
 	"log"
 	"net/http"
 	"os"
@@ -25,30 +25,29 @@ import (
 func main() {
 	cfg := config.MustLoad()
 
-	postgres, err := postgres.New(&cfg.Database)
+	db, err := postgres.New(&cfg.Database)
 	if err != nil {
-		panic(err)
+		log.Fatalf("db connection faild: %v", err)
 	}
 
-	jobs := jobs.New(postgres)
-
-	worker := initWorker(postgres, cfg)
+	jobs := jobService.New(db)
+	worker := initWorker(db, cfg)
 	router := initRouterV1(jobs)
+	server := createHttpServer(cfg, router)
 
-	server := &http.Server{
-		Addr:         cfg.HttpServer.Addr,
-		ReadTimeout:  cfg.HttpServer.ReadTimeout,
-		WriteTimeout: cfg.HttpServer.WriteTimeout,
-		Handler:      router,
-	}
+	runApplication(server, worker)
 
-	go func() {
-		if err := server.ListenAndServe(); err != nil &&
-			err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
+	log.Println("Shutting down server...")
 
+	shutdownApplication(cfg, server, worker, db)
+
+	log.Println("Application has been stopped")
+}
+
+func runApplication(
+	server *http.Server,
+	worker *appWorker.Worker,
+) {
 	exitCtx, stop := signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
@@ -57,15 +56,32 @@ func main() {
 	)
 	defer stop()
 
+	errCh := make(chan error, 2)
+	go func() {
+		if err := server.ListenAndServe(); err != nil &&
+			err != http.ErrServerClosed {
+			errCh <- err
+		}
+	}()
 	go func() {
 		if err := worker.Run(exitCtx); err != nil {
-			panic(err)
+			errCh <- err
 		}
 	}()
 
-	<-exitCtx.Done()
-	log.Println("Shutting down server...")
+	select {
+	case <-exitCtx.Done():
+	case err := <-errCh:
+		log.Printf("Component failed: %v", err)
+	}
+}
 
+func shutdownApplication(
+	cfg *config.Config,
+	server *http.Server,
+	worker *appWorker.Worker,
+	db *postgres.Postgres,
+) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
 		cfg.HttpServer.ShutdownTimeout,
@@ -95,18 +111,23 @@ func main() {
 	}()
 
 	wg.Wait()
-	log.Println("Application has beeb stopped")
+
+	if err := db.Close(); err != nil {
+		log.Printf("db shutting down is failed, err: %v", err)
+		return
+	}
+	log.Println("DB connection has been closed successfully")
 }
 
 func initWorker(
-	postgres *postgres.Postgres,
+	db *postgres.Postgres,
 	cfg *config.Config,
-) *worker.Worker {
-	cron := scheduler.NewRobfigCronScheduler()
-	httpExecutor := executor.NewHTTPExecutor(cfg.Worker.JobTimeout)
+) *appWorker.Worker {
+	cron := robfigcron.New()
+	httpExecutor := jobExecutor.NewHTTPExecutor(cfg.Worker.JobTimeout)
 
-	return worker.New(
-		postgres,
+	return appWorker.New(
+		db,
 		httpExecutor,
 		cfg.Worker.ReconclineInterval,
 		cron,
@@ -114,16 +135,25 @@ func initWorker(
 	)
 }
 
-func initRouterV1(jobs *jobs.Jobs) *gin.Engine {
+func createHttpServer(cfg *config.Config, router http.Handler) *http.Server {
+	return &http.Server{
+		Addr:         cfg.HttpServer.Addr,
+		ReadTimeout:  cfg.HttpServer.ReadTimeout,
+		WriteTimeout: cfg.HttpServer.WriteTimeout,
+		Handler:      router,
+	}
+}
+
+func initRouterV1(jobs *jobService.Jobs) *gin.Engine {
 	router := gin.Default()
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", jobHandlers.CreateCreateHandler(jobs))
-		v1.DELETE("/jobs/:jobId", jobHandlers.CreateDeleteHandler(jobs))
-		v1.GET("/jobs", jobHandlers.CreateGetHandler(jobs))
+		v1.POST("/jobs", jobHandlers.Create(jobs))
+		v1.DELETE("/jobs/:jobId", jobHandlers.Delete(jobs))
+		v1.GET("/jobs", jobHandlers.Get(jobs))
 	}
 	return router
 }

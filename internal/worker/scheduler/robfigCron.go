@@ -1,4 +1,4 @@
-package scheduler
+package robfigcron
 
 import (
 	"context"
@@ -7,17 +7,17 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-type RobfigCron struct {
+type robfigCron struct {
 	cron *cron.Cron
 }
 
-func NewRobfigCronScheduler() *RobfigCron {
-	return &RobfigCron{
+func New() *robfigCron {
+	return &robfigCron{
 		cron: cron.New(),
 	}
 }
 
-func (s *RobfigCron) AddFunc(spec string, cmd func()) (int, error) {
+func (s *robfigCron) AddFunc(spec string, cmd func()) (int, error) {
 	id, err := s.cron.AddFunc(spec, cmd)
 	if err != nil {
 		return 0, fmt.Errorf("error occurred on adding cron func: %w", err)
@@ -25,14 +25,14 @@ func (s *RobfigCron) AddFunc(spec string, cmd func()) (int, error) {
 	return int(id), nil
 }
 
-func (s *RobfigCron) Remove(id int) {
+func (s *robfigCron) Remove(id int) {
 	s.cron.Remove(cron.EntryID(id))
 }
 
-func (s *RobfigCron) Start() {
+func (s *robfigCron) Start() {
 	s.cron.Start()
 }
 
-func (s *RobfigCron) Stop() context.Context {
+func (s *robfigCron) Stop() context.Context {
 	return s.cron.Stop()
 }
