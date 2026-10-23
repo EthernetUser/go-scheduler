@@ -16,8 +16,8 @@ type HttpServer struct {
 }
 
 type Worker struct {
-	ShutdownTimeout time.Duration
-	JobTimeout      time.Duration
+	ReconclineInterval time.Duration
+	JobTimeout         time.Duration
 }
 
 type Database struct {
@@ -72,8 +72,8 @@ func MustLoad() *Config {
 			Name:     getEnv("DB_NAME"),
 		},
 		Worker: Worker{
-			ShutdownTimeout: parseTimeDurationFromEnv(
-				"WORKER_SHUTDOWN_TIMEOUT",
+			ReconclineInterval: parseTimeDurationFromEnv(
+				"WORKER_RECONCLINE_INTERVAL",
 			),
 			JobTimeout: parseTimeDurationFromEnv("WORKER_JOB_TIMEOUT"),
 		},
