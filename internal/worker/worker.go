@@ -1,6 +1,8 @@
 package worker
 
 import (
+	"context"
+	"fmt"
 	"go-scheduler/internal/jobs"
 	"sync"
 	"time"
@@ -29,5 +31,31 @@ func New(
 		interval:   interval,
 		scheduled:  make(map[int]int),
 		seen:       make(map[int]jobs.Job),
+	}
+}
+
+func (w *Worker) Run(ctx context.Context) error {
+	w.cron.Start()
+
+	ticker := time.NewTicker(w.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+
+		}
+	}
+}
+
+func (w *Worker) Shutdown(shutdownCtx context.Context) error {
+	cronCtx := w.cron.Stop()
+	select {
+	case <-cronCtx.Done():
+		return nil
+	case <-shutdownCtx.Done():
+		return fmt.Errorf("Timeout occurred")
 	}
 }

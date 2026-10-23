@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,7 +33,7 @@ func main() {
 
 	jobs := jobs.New(postgres)
 
-	initWorker(postgres)
+	worker := initWorker(postgres)
 	router := initRouterV1(jobs)
 
 	server := &http.Server{
@@ -49,9 +50,21 @@ func main() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
+	exitCtx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
+	go func() {
+		if err := worker.Run(exitCtx); err != nil {
+			panic(err)
+		}
+	}()
+
+	<-exitCtx.Done()
 	log.Println("Shutting down server...")
 
 	ctx, cancel := context.WithTimeout(
@@ -60,11 +73,30 @@ func main() {
 	)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
-	}
+	var wg sync.WaitGroup
+	wg.Add(2)
 
-	log.Println("Server stopped")
+	go func() {
+		defer wg.Done()
+		if err := server.Shutdown(ctx); err != nil {
+			log.Printf("Error occurred: %v", err)
+			return
+		}
+		log.Println("HttpServer has been stopped successfully")
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := worker.Shutdown(ctx); err != nil {
+			log.Printf("Error occurred: %v", err)
+			return
+		}
+
+		log.Println("Worker has been stopped successfully")
+	}()
+
+	wg.Wait()
+	log.Println("Application has beeb stopped")
 }
 
 func initWorker(postgres *postgres.Postgres) *worker.Worker {

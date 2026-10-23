@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/robfig/cron/v3"
@@ -32,6 +33,6 @@ func (s *RobfigCron) Start() {
 	s.cron.Start()
 }
 
-func (s *RobfigCron) Stop() {
-	s.cron.Stop()
+func (s *RobfigCron) Stop() context.Context {
+	return s.cron.Stop()
 }
