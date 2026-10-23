@@ -44,6 +44,8 @@ func (w *Worker) Run(ctx context.Context) error {
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
 
+	w.reconcile(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():
