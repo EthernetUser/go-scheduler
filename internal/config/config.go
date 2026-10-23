@@ -8,29 +8,32 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 type HttpServer struct {
-	Addr string
-	ReadTimeout time.Duration
-	WriteTimeout time.Duration
+	Addr            string
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
 	ShutdownTimeout time.Duration
 }
 
+type Worker struct {
+	ShutdownTimeout time.Duration
+	JobTimeout      time.Duration
+}
+
 type Database struct {
-	Host string
-	Port string
-	User string
+	Host     string
+	Port     string
+	User     string
 	Password string
-	Name string
+	Name     string
 }
 
 type Config struct {
-	Env string
+	Env        string
 	HttpServer HttpServer
-	Database Database
+	Database   Database
+	Worker     Worker
 }
-
-
 
 func MustLoad() *Config {
 	configPath := os.Getenv("CONFIG_PATH")
@@ -48,43 +51,53 @@ func MustLoad() *Config {
 	}
 
 	return &Config{
-		Env: getEnv("ENV", "local"),
+		Env: getEnv("ENV"),
 		HttpServer: HttpServer{
-			Addr: getEnv("HTTP_SERVER_ADDR", ":8080"),
-			ReadTimeout: parseTimeDurationFromEnv("HTTP_SERVER_READ_TIMEOUT", "10s"),
-			WriteTimeout: parseTimeDurationFromEnv("HTTP_SERVER_WRITE_TIMEOUT", "10s"),
-			ShutdownTimeout: parseTimeDurationFromEnv("HTTP_SERVER_SHUTDOWN_TIMEOUT", "10s"),
+			Addr: getEnv("HTTP_SERVER_ADDR"),
+			ReadTimeout: parseTimeDurationFromEnv(
+				"HTTP_SERVER_READ_TIMEOUT",
+			),
+			WriteTimeout: parseTimeDurationFromEnv(
+				"HTTP_SERVER_WRITE_TIMEOUT",
+			),
+			ShutdownTimeout: parseTimeDurationFromEnv(
+				"HTTP_SERVER_SHUTDOWN_TIMEOUT",
+			),
 		},
 		Database: Database{
-			Host: getEnv("DB_HOST", "localhost"),
-			Port: getEnv("DB_PORT", "5432"),
-			User: getEnv("DB_USER", "postgres"),
-			Password: getEnv("DB_PASSWORD", "postgres"),
-			Name: getEnv("DB_NAME", "postgres"),
+			Host:     getEnv("DB_HOST"),
+			Port:     getEnv("DB_PORT"),
+			User:     getEnv("DB_USER"),
+			Password: getEnv("DB_PASSWORD"),
+			Name:     getEnv("DB_NAME"),
+		},
+		Worker: Worker{
+			ShutdownTimeout: parseTimeDurationFromEnv(
+				"WORKER_SHUTDOWN_TIMEOUT",
+			),
+			JobTimeout: parseTimeDurationFromEnv("WORKER_JOB_TIMEOUT"),
 		},
 	}
 }
 
-
-func parseTimeDurationFromEnv(key string, defaultValue string) time.Duration {
-	value := getEnv(key, defaultValue)
+func parseTimeDurationFromEnv(key string) time.Duration {
+	value := getEnv(key)
 
 	parsedValue, err := time.ParseDuration(value)
 	if err != nil {
 		log.Fatalf("failed to parse %s, err: %v", key, err)
+		return time.Second
 	}
 
 	return parsedValue
 }
 
-func getEnv(key string, defaultValue string) string {
+func getEnv(key string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
 
-	if defaultValue == "" {
-		log.Fatalf("environment variable %s not set", key)
-	}
+	log.Fatalf("environment variable %s not set", key)
 
-	return defaultValue
+	return ""
 }
