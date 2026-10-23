@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -33,7 +32,7 @@ func main() {
 
 	jobs := jobs.New(postgres)
 
-	worker := initWorker(postgres)
+	worker := initWorker(postgres, cfg)
 	router := initRouterV1(jobs)
 
 	server := &http.Server{
@@ -99,11 +98,20 @@ func main() {
 	log.Println("Application has beeb stopped")
 }
 
-func initWorker(postgres *postgres.Postgres) *worker.Worker {
+func initWorker(
+	postgres *postgres.Postgres,
+	cfg *config.Config,
+) *worker.Worker {
 	cron := scheduler.NewRobfigCronScheduler()
-	httpExecutor := executor.NewHTTPExecutor(30 * time.Second)
+	httpExecutor := executor.NewHTTPExecutor(cfg.Worker.JobTimeout)
 
-	return worker.New(postgres, httpExecutor, 2*time.Minute, cron)
+	return worker.New(
+		postgres,
+		httpExecutor,
+		cfg.Worker.ReconclineInterval,
+		cron,
+		cfg.Worker.JobTimeout,
+	)
 }
 
 func initRouterV1(jobs *jobs.Jobs) *gin.Engine {

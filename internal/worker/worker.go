@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-scheduler/internal/jobs"
+	"log"
 	"sync"
 	"time"
 )
@@ -13,6 +14,7 @@ type Worker struct {
 	executor   Executor
 	cron       Cron
 	interval   time.Duration
+	jobTimeout time.Duration
 	mu         sync.Mutex
 	scheduled  map[int]int
 	seen       map[int]jobs.Job
@@ -23,12 +25,14 @@ func New(
 	executor Executor,
 	interval time.Duration,
 	cron Cron,
+	jobTimeout time.Duration,
 ) *Worker {
 	return &Worker{
 		repository: repository,
 		executor:   executor,
 		cron:       cron,
 		interval:   interval,
+		jobTimeout: jobTimeout,
 		scheduled:  make(map[int]int),
 		seen:       make(map[int]jobs.Job),
 	}
@@ -45,7 +49,7 @@ func (w *Worker) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-
+			w.reconcile(ctx)
 		}
 	}
 }
@@ -58,4 +62,69 @@ func (w *Worker) Shutdown(shutdownCtx context.Context) error {
 	case <-shutdownCtx.Done():
 		return fmt.Errorf("Timeout occurred")
 	}
+}
+
+func (w *Worker) reconcile(ctx context.Context) {
+	dbJobs, err := w.repository.GetJobs(ctx)
+	if err != nil {
+		return
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	wanted := make(map[int]jobs.Job, len(dbJobs))
+	for _, job := range dbJobs {
+		wanted[job.Id] = job
+	}
+
+	for id, entryId := range w.scheduled {
+		if _, ok := wanted[id]; !ok {
+			w.cron.Remove(entryId)
+			delete(w.scheduled, id)
+			delete(w.seen, id)
+		}
+	}
+
+	for id, job := range wanted {
+		oldJob, exists := w.seen[id]
+
+		if exists && oldJob.UpdatedAt.Equal(job.UpdatedAt) {
+			continue
+		}
+
+		if exists {
+			w.cron.Remove(w.scheduled[id])
+			delete(w.scheduled, id)
+		}
+
+		jobCopy := job
+		entryId, err := w.cron.AddFunc(job.Cron, func() {
+			w.executeJob(jobCopy)
+		})
+
+		if err != nil {
+			log.Println("Failed to add cron")
+		}
+
+		w.scheduled[id] = entryId
+		w.seen[id] = jobCopy
+	}
+}
+
+func (w *Worker) executeJob(job jobs.Job) {
+	ctx, cancel := context.WithTimeout(context.Background(), w.jobTimeout)
+	defer cancel()
+
+	start := time.Now()
+
+	err := w.executor.Execute(ctx, job)
+
+	duration := time.Since(start)
+	if err != nil {
+		log.Printf("duration: %v", duration)
+		return
+	}
+
+	log.Printf("job has been finished successfully")
 }
