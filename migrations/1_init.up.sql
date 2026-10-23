@@ -5,6 +5,5 @@ CREATE TABLE
         description TEXT,
         cron TEXT NOT NULL,
         url TEXT NOT NULL,
-        cron_id INT NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
     );
