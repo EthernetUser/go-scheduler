@@ -108,6 +108,11 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 			jobs = append(jobs, job)
 		}
 
+		if err = rows.Err(); err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
 		if len(jobs) < offset+limit {
 			break
 		}
