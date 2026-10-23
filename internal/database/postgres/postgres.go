@@ -99,6 +99,7 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 				&job.Cron,
 				&job.Url,
 				&job.CronId,
+				&job.UpdatedAt,
 			)
 			if err != nil {
 				tx.Rollback()
@@ -123,8 +124,8 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 
 func (p *Postgres) GetJob(ctx context.Context, id int) (domainJobs.Job, error) {
 	var job domainJobs.Job
-	err := p.db.QueryRow("SELECT name, description, cron, url, cron_id FROM jobs WHERE id = $1", id).
-		Scan(&job.Name, &job.Description, &job.Cron, &job.Url, &job.CronId)
+	err := p.db.QueryRow("SELECT name, description, cron, url, cron_id, updated_at FROM jobs WHERE id = $1", id).
+		Scan(&job.Name, &job.Description, &job.Cron, &job.Url, &job.CronId, &job.UpdatedAt)
 	if err != nil {
 		return domainJobs.Job{}, err
 	}
@@ -138,7 +139,7 @@ func (p *Postgres) UpdateJob(ctx context.Context, job domainJobs.Job) error {
 	}
 
 	_, err = tx.Exec(
-		"UPDATE jobs SET name = $1, description = $2, cron = $3, url = $4 WHERE id = $5",
+		"UPDATE jobs SET name = $1, description = $2, cron = $3, url = $4, updated_at = now() WHERE id = $6",
 		job.Name,
 		job.Description,
 		job.Cron,

@@ -1,5 +1,7 @@
 package jobs
 
+import "time"
+
 type JobForCreation struct {
 	Name        string
 	Description string
@@ -14,4 +16,5 @@ type Job struct {
 	Cron        string
 	CronId      int
 	Url         string
+	UpdatedAt   time.Time
 }
