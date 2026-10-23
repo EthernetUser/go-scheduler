@@ -82,7 +82,7 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 	limit := 100
 	for {
 		rows, err := tx.Query(
-			"SELECT name, description, cron, url, cron_id FROM jobs LIMIT $1 OFFSET $2",
+			"SELECT name, description, cron, url FROM jobs LIMIT $1 OFFSET $2",
 			limit,
 			offset,
 		)
@@ -98,7 +98,6 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 				&job.Description,
 				&job.Cron,
 				&job.Url,
-				&job.CronId,
 				&job.UpdatedAt,
 			)
 			if err != nil {
@@ -124,8 +123,8 @@ func (p *Postgres) GetJobs(ctx context.Context) ([]domainJobs.Job, error) {
 
 func (p *Postgres) GetJob(ctx context.Context, id int) (domainJobs.Job, error) {
 	var job domainJobs.Job
-	err := p.db.QueryRow("SELECT name, description, cron, url, cron_id, updated_at FROM jobs WHERE id = $1", id).
-		Scan(&job.Name, &job.Description, &job.Cron, &job.Url, &job.CronId, &job.UpdatedAt)
+	err := p.db.QueryRow("SELECT name, description, cron, url, updated_at FROM jobs WHERE id = $1", id).
+		Scan(&job.Name, &job.Description, &job.Cron, &job.Url, &job.UpdatedAt)
 	if err != nil {
 		return domainJobs.Job{}, err
 	}

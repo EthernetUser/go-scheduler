@@ -14,7 +14,6 @@ type Job struct {
 	Name        string
 	Description string
 	Cron        string
-	CronId      int
 	Url         string
 	UpdatedAt   time.Time
 }
