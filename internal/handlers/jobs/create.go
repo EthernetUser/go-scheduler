@@ -26,7 +26,8 @@ type JobResponse struct {
 // @Param		request	body		JobRequest	true	"Some ID"
 // @Success	200		{object}	JobResponse	"ok"
 // @Router		/jobs [post]
-func Create(logger Logger, jobs *jobsService.Jobs) gin.HandlerFunc {
+func (h *handlers) Create(jobs *jobsService.Jobs) gin.HandlerFunc {
+	logger := h.logger.WithGroup("handler.create")
 	return func(ctx *gin.Context) {
 		var job JobRequest
 		if err := ctx.BindJSON(&job); err != nil {

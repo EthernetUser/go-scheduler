@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"go-scheduler/cmd/docs"
+	"go-scheduler/internal/adapters"
 	"go-scheduler/internal/config"
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
@@ -134,7 +135,7 @@ func initWorker(
 
 	return appWorker.New(
 		db,
-		logger,
+		logger.WithGroup("worker"),
 		httpExecutor,
 		cfg.Worker.ReconclineInterval,
 		cron,
@@ -172,11 +173,14 @@ func initRouterV1(
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	slogAdapter := adapters.NewSlogAdapter(logger)
+	handlers := jobHandlers.New(slogAdapter.WithGroup("service"))
+
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", jobHandlers.Create(logger, jobs))
-		v1.DELETE("/jobs/:jobId", jobHandlers.Delete(logger, jobs))
-		v1.GET("/jobs", jobHandlers.Get(logger, jobs))
+		v1.POST("/jobs", handlers.Create(jobs))
+		v1.DELETE("/jobs/:jobId", handlers.Delete(jobs))
+		v1.GET("/jobs", handlers.Get(jobs))
 	}
 	return router
 }

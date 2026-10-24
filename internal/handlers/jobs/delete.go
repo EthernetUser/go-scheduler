@@ -16,7 +16,8 @@ import (
 // @Param		jobId	path		string	true	"Some ID"
 // @Success	200		{string}	string	"ok"
 // @Router		/jobs/{jobId} [delete]
-func Delete(logger Logger, jobs *jobsService.Jobs) gin.HandlerFunc {
+func (h *handlers) Delete(jobs *jobsService.Jobs) gin.HandlerFunc {
+	logger := h.logger.WithGroup("handler.delete")
 	return func(ctx *gin.Context) {
 		jobId := ctx.Param("jobId")
 		if jobId == "" {
