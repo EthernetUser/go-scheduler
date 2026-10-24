@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	jobsService "go-scheduler/internal/jobs"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -16,7 +15,7 @@ import (
 // @Param		jobId	path		string	true	"Some ID"
 // @Success	200		{string}	string	"ok"
 // @Router		/jobs/{jobId} [delete]
-func (h *handlers) Delete(jobs *jobsService.Jobs) gin.HandlerFunc {
+func (h *handlers) Delete() gin.HandlerFunc {
 	logger := h.logger.WithGroup("handler.delete")
 	return func(ctx *gin.Context) {
 		jobId := ctx.Param("jobId")
@@ -31,7 +30,7 @@ func (h *handlers) Delete(jobs *jobsService.Jobs) gin.HandlerFunc {
 			return
 		}
 
-		err = jobs.DeleteJob(ctx, parsedJobId)
+		err = h.jobService.DeleteJob(ctx, parsedJobId)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
 			ctx.JSON(400, gin.H{"error": err.Error()})

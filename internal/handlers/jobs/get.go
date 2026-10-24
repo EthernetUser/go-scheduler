@@ -18,10 +18,10 @@ type GetJobsResponse struct {
 // @Produce	json
 // @Success	200	{object}	GetJobsResponse	"ok"
 // @Router		/jobs [get]
-func (h *handlers) Get(jobs *jobsService.Jobs) gin.HandlerFunc {
+func (h *handlers) Get() gin.HandlerFunc {
 	logger := h.logger.WithGroup("handler.get")
 	return func(ctx *gin.Context) {
-		jobs, err := jobs.GetJobs(ctx)
+		jobs, err := h.jobService.GetJobs(ctx)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
 			ctx.JSON(400, gin.H{"error": err.Error()})

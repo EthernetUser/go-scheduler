@@ -174,14 +174,14 @@ func initRouterV1(
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	slogAdapter := adapters.NewSlogAdapter(logger)
-	handlers := jobHandlers.New(slogAdapter.WithGroup("service"))
+	handlers := jobHandlers.New(slogAdapter.WithGroup("service"), jobs)
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", handlers.Create(jobs))
-		v1.DELETE("/jobs/:jobId", handlers.Delete(jobs))
-		v1.GET("/jobs", handlers.Get(jobs))
-		v1.PUT("/jobs", handlers.Update(jobs))
+		v1.POST("/jobs", handlers.Create())
+		v1.DELETE("/jobs/:jobId", handlers.Delete())
+		v1.GET("/jobs", handlers.Get())
+		v1.PUT("/jobs", handlers.Update())
 	}
 	return router
 }

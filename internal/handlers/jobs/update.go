@@ -27,8 +27,8 @@ type UpdateJobResponse struct {
 // @Param		request	body		UpdateJobRequest	true	"Some ID"
 // @Success	200		{object}	UpdateJobResponse	"ok"
 // @Router		/jobs [put]
-func (h *handlers) Update(jobs *jobsService.Jobs) gin.HandlerFunc {
-	logger := h.logger.WithGroup("handler.create")
+func (h *handlers) Update() gin.HandlerFunc {
+	logger := h.logger.WithGroup("handler.update")
 	return func(ctx *gin.Context) {
 		var job UpdateJobRequest
 		if err := ctx.BindJSON(&job); err != nil {
@@ -44,7 +44,7 @@ func (h *handlers) Update(jobs *jobsService.Jobs) gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		err := jobs.UpdateJob(ctx, parsedJob)
+		err := h.jobService.UpdateJob(ctx, parsedJob)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
 			ctx.JSON(400, gin.H{"error": err.Error()})

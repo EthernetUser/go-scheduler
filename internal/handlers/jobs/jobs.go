@@ -1,5 +1,7 @@
 package handlers
 
+import "go-scheduler/internal/jobs"
+
 type Logger interface {
 	Error(msg string, args ...any)
 	Debug(msg string, args ...any)
@@ -7,11 +9,13 @@ type Logger interface {
 }
 
 type handlers struct {
-	logger Logger
+	logger     Logger
+	jobService *jobs.Jobs
 }
 
-func New(logger Logger) *handlers {
+func New(logger Logger, jobService *jobs.Jobs) *handlers {
 	return &handlers{
-		logger: logger,
+		logger:     logger,
+		jobService: jobService,
 	}
 }

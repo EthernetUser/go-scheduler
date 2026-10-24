@@ -26,7 +26,7 @@ type CreateJobResponse struct {
 // @Param		request	body		CreateJobRequest	true	"Some ID"
 // @Success	200		{object}	CreateJobResponse	"ok"
 // @Router		/jobs [post]
-func (h *handlers) Create(jobs *jobsService.Jobs) gin.HandlerFunc {
+func (h *handlers) Create() gin.HandlerFunc {
 	logger := h.logger.WithGroup("handler.create")
 	return func(ctx *gin.Context) {
 		var job CreateJobRequest
@@ -42,7 +42,7 @@ func (h *handlers) Create(jobs *jobsService.Jobs) gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		err := jobs.CreateJob(ctx, parsedJob)
+		err := h.jobService.CreateJob(ctx, parsedJob)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
 			ctx.JSON(400, gin.H{"error": err.Error()})
