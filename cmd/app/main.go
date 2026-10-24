@@ -181,6 +181,7 @@ func initRouterV1(
 		v1.POST("/jobs", handlers.Create(jobs))
 		v1.DELETE("/jobs/:jobId", handlers.Delete(jobs))
 		v1.GET("/jobs", handlers.Get(jobs))
+		v1.PUT("/jobs", handlers.Update(jobs))
 	}
 	return router
 }

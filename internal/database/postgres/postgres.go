@@ -144,7 +144,7 @@ func (p *Postgres) UpdateJob(ctx context.Context, job domainJobs.Job) error {
 	}
 
 	_, err = tx.Exec(
-		"UPDATE jobs SET name = $1, description = $2, cron = $3, url = $4, updated_at = now() WHERE id = $6",
+		"UPDATE jobs SET name = $1, description = $2, cron = $3, url = $4, updated_at = now() WHERE id = $5",
 		job.Name,
 		job.Description,
 		job.Cron,

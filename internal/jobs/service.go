@@ -30,6 +30,15 @@ func (j *Jobs) DeleteJob(ctx context.Context, id int) error {
 	return nil
 }
 
+func (j *Jobs) UpdateJob(ctx context.Context, job Job) error {
+	err := j.respository.UpdateJob(ctx, job)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (j *Jobs) GetJobs(ctx context.Context) ([]Job, error) {
 	return j.respository.GetJobs(ctx)
 }

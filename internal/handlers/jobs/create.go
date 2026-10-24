@@ -6,14 +6,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type JobRequest struct {
+type CreateJobRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Cron        string `json:"cron"`
 	Url         string `json:"url"`
 }
 
-type JobResponse struct {
+type CreateJobResponse struct {
 	Message string `json:"message"`
 }
 
@@ -23,13 +23,13 @@ type JobResponse struct {
 // @ID			create-job
 // @Accept		json
 // @Produce	json
-// @Param		request	body		JobRequest	true	"Some ID"
-// @Success	200		{object}	JobResponse	"ok"
+// @Param		request	body		CreateJobRequest	true	"Some ID"
+// @Success	200		{object}	CreateJobResponse	"ok"
 // @Router		/jobs [post]
 func (h *handlers) Create(jobs *jobsService.Jobs) gin.HandlerFunc {
 	logger := h.logger.WithGroup("handler.create")
 	return func(ctx *gin.Context) {
-		var job JobRequest
+		var job CreateJobRequest
 		if err := ctx.BindJSON(&job); err != nil {
 			ctx.JSON(400, gin.H{"error": err.Error()})
 			return
