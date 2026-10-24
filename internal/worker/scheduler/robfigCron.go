@@ -20,7 +20,7 @@ func New() *robfigCron {
 func (s *robfigCron) AddFunc(spec string, cmd func()) (int, error) {
 	id, err := s.cron.AddFunc(spec, cmd)
 	if err != nil {
-		return 0, fmt.Errorf("error occurred on adding cron func: %w", err)
+		return 0, fmt.Errorf("Error occurred on adding cron func: %w", err)
 	}
 	return int(id), nil
 }

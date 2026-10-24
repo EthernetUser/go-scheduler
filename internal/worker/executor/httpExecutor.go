@@ -21,12 +21,12 @@ func NewHTTPExecutor(timeout time.Duration) *HTTPExecutor {
 func (e *HTTPExecutor) Execute(ctx context.Context, job jobs.Job) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, job.Url, nil)
 	if err != nil {
-		return fmt.Errorf("error occurred on creating request: %w", err)
+		return fmt.Errorf("Error occurred on creating request: %w", err)
 	}
 
 	resp, err := e.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("error occurred on processing request: %w", err)
+		return fmt.Errorf("Error occurred on processing request: %w", err)
 	}
 
 	defer resp.Body.Close()

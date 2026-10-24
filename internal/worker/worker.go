@@ -4,13 +4,19 @@ import (
 	"context"
 	"fmt"
 	"go-scheduler/internal/jobs"
-	"log"
 	"sync"
 	"time"
 )
 
+type Logger interface {
+	Info(msg string, args ...any)
+	Error(msg string, args ...any)
+	Debug(msg string, args ...any)
+}
+
 type Worker struct {
 	repository Repository
+	logger     Logger
 	executor   Executor
 	cron       Cron
 	interval   time.Duration
@@ -22,6 +28,7 @@ type Worker struct {
 
 func New(
 	repository Repository,
+	logger Logger,
 	executor Executor,
 	interval time.Duration,
 	cron Cron,
@@ -29,6 +36,7 @@ func New(
 ) *Worker {
 	return &Worker{
 		repository: repository,
+		logger:     logger,
 		executor:   executor,
 		cron:       cron,
 		interval:   interval,
@@ -106,7 +114,8 @@ func (w *Worker) reconcile(ctx context.Context) {
 		})
 
 		if err != nil {
-			log.Println("Failed to add cron")
+			w.logger.Error("Failed to add cron", "jobId", jobCopy.Id)
+			continue
 		}
 
 		w.scheduled[id] = entryId
@@ -124,9 +133,17 @@ func (w *Worker) executeJob(job jobs.Job) {
 
 	duration := time.Since(start)
 	if err != nil {
-		log.Printf("duration: %v", duration)
+		w.logger.Error(
+			"Error occurred on processing job",
+			"error",
+			err,
+			"duration",
+			duration,
+			"jobId",
+			job.Id,
+		)
 		return
 	}
 
-	log.Printf("job has been finished successfully")
+	w.logger.Debug("Job has been finished successfully", "duration", duration)
 }

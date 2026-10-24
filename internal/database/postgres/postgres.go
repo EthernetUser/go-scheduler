@@ -26,12 +26,12 @@ func New(cfg *config.Database) (*Postgres, error) {
 
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
-		return &Postgres{}, fmt.Errorf("failed to open database: %w", err)
+		return nil, fmt.Errorf("Failed to open database: %w", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		return &Postgres{}, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("Failed to ping database: %w", err)
 	}
 
 	return &Postgres{

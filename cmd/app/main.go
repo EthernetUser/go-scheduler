@@ -7,10 +7,12 @@ import (
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
 	jobService "go-scheduler/internal/jobs"
+	slogLogger "go-scheduler/internal/pkg/logger"
 	appWorker "go-scheduler/internal/worker"
 	jobExecutor "go-scheduler/internal/worker/executor"
 	robfigcron "go-scheduler/internal/worker/scheduler"
-	"log"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,27 +26,29 @@ import (
 
 func main() {
 	cfg := config.MustLoad()
-
+	logger := slogLogger.New(cfg.Env)
 	db, err := postgres.New(&cfg.Database)
+
 	if err != nil {
-		log.Fatalf("db connection faild: %v", err)
+		logger.Error("DB connection failed", "error", err)
+		os.Exit(1)
 	}
 
 	jobs := jobService.New(db)
-	worker := initWorker(db, cfg)
-	router := initRouterV1(jobs)
+	worker := initWorker(db, cfg, logger)
+	router := initRouterV1(cfg.Env, logger, jobs)
 	server := createHttpServer(cfg, router)
 
-	runApplication(server, worker)
+	runApplication(logger, server, worker)
 
-	log.Println("Shutting down server...")
+	logger.Debug("Shutting down server...")
 
-	shutdownApplication(cfg, server, worker, db)
-
-	log.Println("Application has been stopped")
+	shutdownApplication(cfg, logger, server, worker, db)
+	logger.Info("Application has been stopped")
 }
 
 func runApplication(
+	logger *slog.Logger,
 	server *http.Server,
 	worker *appWorker.Worker,
 ) {
@@ -72,12 +76,13 @@ func runApplication(
 	select {
 	case <-exitCtx.Done():
 	case err := <-errCh:
-		log.Printf("Component failed: %v", err)
+		logger.Error("Running application failed", "error", err)
 	}
 }
 
 func shutdownApplication(
 	cfg *config.Config,
+	logger *slog.Logger,
 	server *http.Server,
 	worker *appWorker.Worker,
 	db *postgres.Postgres,
@@ -94,40 +99,42 @@ func shutdownApplication(
 	go func() {
 		defer wg.Done()
 		if err := server.Shutdown(ctx); err != nil {
-			log.Printf("Error occurred: %v", err)
+			logger.Error("Error occurred", "error", err)
 			return
 		}
-		log.Println("HttpServer has been stopped successfully")
+		logger.Debug("HttpServer has been stopped successfully")
 	}()
 
 	go func() {
 		defer wg.Done()
 		if err := worker.Shutdown(ctx); err != nil {
-			log.Printf("Error occurred: %v", err)
+			logger.Error("Error occurred", "error", err)
 			return
 		}
 
-		log.Println("Worker has been stopped successfully")
+		logger.Debug("Worker has been stopped successfully")
 	}()
 
 	wg.Wait()
 
 	if err := db.Close(); err != nil {
-		log.Printf("db shutting down is failed, err: %v", err)
+		logger.Error("DB shutting down is failed", "error", err)
 		return
 	}
-	log.Println("DB connection has been closed successfully")
+	logger.Debug("DB connection has been closed successfully")
 }
 
 func initWorker(
 	db *postgres.Postgres,
 	cfg *config.Config,
+	logger *slog.Logger,
 ) *appWorker.Worker {
 	cron := robfigcron.New()
 	httpExecutor := jobExecutor.NewHTTPExecutor(cfg.Worker.JobTimeout)
 
 	return appWorker.New(
 		db,
+		logger,
 		httpExecutor,
 		cfg.Worker.ReconclineInterval,
 		cron,
@@ -135,7 +142,10 @@ func initWorker(
 	)
 }
 
-func createHttpServer(cfg *config.Config, router http.Handler) *http.Server {
+func createHttpServer(
+	cfg *config.Config,
+	router http.Handler,
+) *http.Server {
 	return &http.Server{
 		Addr:         cfg.HttpServer.Addr,
 		ReadTimeout:  cfg.HttpServer.ReadTimeout,
@@ -144,16 +154,29 @@ func createHttpServer(cfg *config.Config, router http.Handler) *http.Server {
 	}
 }
 
-func initRouterV1(jobs *jobService.Jobs) *gin.Engine {
+func initRouterV1(
+	env string,
+	logger *slog.Logger,
+	jobs *jobService.Jobs,
+) *gin.Engine {
+	gin.DefaultWriter = io.Discard
+	switch env {
+	case "local":
+		gin.SetMode(gin.DebugMode)
+	case "prod":
+		gin.SetMode(gin.ReleaseMode)
+	default:
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.Default()
 	docs.SwaggerInfo.BasePath = "/api/v1"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", jobHandlers.Create(jobs))
-		v1.DELETE("/jobs/:jobId", jobHandlers.Delete(jobs))
-		v1.GET("/jobs", jobHandlers.Get(jobs))
+		v1.POST("/jobs", jobHandlers.Create(logger, jobs))
+		v1.DELETE("/jobs/:jobId", jobHandlers.Delete(logger, jobs))
+		v1.GET("/jobs", jobHandlers.Get(logger, jobs))
 	}
 	return router
 }
