@@ -9,6 +9,7 @@ import (
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
 	jobService "go-scheduler/internal/jobs"
+	gracefulshutdowner "go-scheduler/internal/pkg/gracefulShutdowner"
 	slogLogger "go-scheduler/internal/pkg/logger"
 	appWorker "go-scheduler/internal/worker"
 	jobExecutor "go-scheduler/internal/worker/executor"
@@ -17,7 +18,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	_ "go-scheduler/cmd/docs"
@@ -39,13 +39,29 @@ func main() {
 	worker := initWorker(db, cfg, logger)
 	router := initRouterV1(logger, jobs)
 	server := createHttpServer(cfg, router)
+	gh := gracefulshutdowner.New(
+		[]gracefulshutdowner.Instance{server, worker, db},
+		cfg.GracefulSHutdowner.PerInstanceShutdownTimeout,
+	)
 
 	runApplication(logger, server, worker)
 
 	logger.Debug("Shutting down server...")
 
-	shutdownApplication(cfg, logger, server, worker, db)
-	logger.Info("Application has been stopped")
+	shutdownCtx, cancel := context.WithTimeoutCause(
+		context.Background(),
+		cfg.GracefulSHutdowner.GlobalShutdownTimeout,
+		gracefulshutdowner.GlobalTimeoutErr,
+	)
+	defer cancel()
+
+	err = gh.Shutdown(shutdownCtx)
+	if err != nil {
+		logger.Error("Application has been stopped with errors", "errors", err)
+		return
+	}
+
+	logger.Info("Application has been stopped successfully")
 }
 
 func runApplication(
@@ -79,50 +95,6 @@ func runApplication(
 	case err := <-errCh:
 		logger.Error("Running application failed", "error", err)
 	}
-}
-
-func shutdownApplication(
-	cfg *config.Config,
-	logger *slog.Logger,
-	server *http.Server,
-	worker *appWorker.Worker,
-	db *postgres.Postgres,
-) {
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		cfg.HttpServer.ShutdownTimeout,
-	)
-	defer cancel()
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		if err := server.Shutdown(ctx); err != nil {
-			logger.Error("Error occurred", "error", err)
-			return
-		}
-		logger.Debug("HttpServer has been stopped successfully")
-	}()
-
-	go func() {
-		defer wg.Done()
-		if err := worker.Shutdown(ctx); err != nil {
-			logger.Error("Error occurred", "error", err)
-			return
-		}
-
-		logger.Debug("Worker has been stopped successfully")
-	}()
-
-	wg.Wait()
-
-	if err := db.Close(); err != nil {
-		logger.Error("DB shutting down is failed", "error", err)
-		return
-	}
-	logger.Debug("DB connection has been closed successfully")
 }
 
 func initWorker(

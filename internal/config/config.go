@@ -28,11 +28,17 @@ type Database struct {
 	Name     string
 }
 
+type GracefulSHutdowner struct {
+	GlobalShutdownTimeout      time.Duration
+	PerInstanceShutdownTimeout time.Duration
+}
+
 type Config struct {
-	Env        string
-	HttpServer HttpServer
-	Database   Database
-	Worker     Worker
+	Env                string
+	HttpServer         HttpServer
+	Database           Database
+	Worker             Worker
+	GracefulSHutdowner GracefulSHutdowner
 }
 
 func MustLoad() *Config {
@@ -76,6 +82,14 @@ func MustLoad() *Config {
 				"WORKER_RECONCLINE_INTERVAL",
 			),
 			JobTimeout: parseTimeDurationFromEnv("WORKER_JOB_TIMEOUT"),
+		},
+		GracefulSHutdowner: GracefulSHutdowner{
+			GlobalShutdownTimeout: parseTimeDurationFromEnv(
+				"SHUTDOWN_GLOBAL_TIMEOUT",
+			),
+			PerInstanceShutdownTimeout: parseTimeDurationFromEnv(
+				"SHUTDOWN_PER_INSTANCE_TIMEOUT",
+			),
 		},
 	}
 }

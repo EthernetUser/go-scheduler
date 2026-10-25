@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"go-scheduler/internal/jobs"
 	"sync"
 	"time"
@@ -70,7 +69,7 @@ func (w *Worker) Shutdown(shutdownCtx context.Context) error {
 	case <-cronCtx.Done():
 		return nil
 	case <-shutdownCtx.Done():
-		return fmt.Errorf("Timeout occurred")
+		return context.Cause(shutdownCtx)
 	}
 }
 

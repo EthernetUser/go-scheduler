@@ -39,7 +39,7 @@ func New(cfg *config.Database) (*Postgres, error) {
 	}, nil
 }
 
-func (p *Postgres) Close() error {
+func (p *Postgres) Shutdown(context.Context) error {
 	return p.db.Close()
 }
 
