@@ -1,14 +1,6 @@
 module go-scheduler
 
-go 1.26.0
-
-require (
-	github.com/golang-migrate/migrate/v4 v4.18.1
-	github.com/lib/pq v1.10.9
-	github.com/robfig/cron/v3 v3.0.0
-	github.com/swaggo/http-swagger/v2 v2.0.2
-	github.com/swaggo/swag v1.16.6
-)
+go 1.27.3
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
@@ -34,4 +26,12 @@ require (
 	golang.org/x/tools v0.52.0 // indirect
 )
 
-require github.com/joho/godotenv v1.5.1
+require (
+	github.com/ethernetuser/shutdown v1.0.0
+	github.com/golang-migrate/migrate/v4 v4.18.1
+	github.com/joho/godotenv v1.5.1
+	github.com/lib/pq v1.10.9
+	github.com/robfig/cron/v3 v3.0.0
+	github.com/swaggo/http-swagger/v2 v2.0.2
+	github.com/swaggo/swag v1.16.6
+)

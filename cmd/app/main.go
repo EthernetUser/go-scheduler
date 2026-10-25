@@ -9,7 +9,6 @@ import (
 	"go-scheduler/internal/database/postgres"
 	jobHandlers "go-scheduler/internal/handlers/jobs"
 	jobService "go-scheduler/internal/jobs"
-	gracefulshutdowner "go-scheduler/internal/pkg/gracefulShutdowner"
 	slogLogger "go-scheduler/internal/pkg/logger"
 	appWorker "go-scheduler/internal/worker"
 	jobExecutor "go-scheduler/internal/worker/executor"
@@ -19,11 +18,15 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "go-scheduler/cmd/docs"
 
+	"github.com/ethernetuser/shutdown"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
+
+const DBDefaultTimeout time.Duration = 10
 
 func main() {
 	cfg := config.MustLoad()
@@ -39,23 +42,28 @@ func main() {
 	worker := initWorker(db, cfg, logger)
 	router := initRouterV1(logger, jobs)
 	server := createHttpServer(cfg, router)
-	gh := gracefulshutdowner.New(
-		[]gracefulshutdowner.Instance{server, worker, db},
+	gs, err := shutdown.New(
+		[]shutdown.Instance{server, worker, db},
 		cfg.GracefulSHutdowner.PerInstanceShutdownTimeout,
+		cfg.GracefulSHutdowner.GlobalShutdownTimeout,
 	)
+
+	if err != nil {
+		logger.Error("shutdown manager is failed", "error", err)
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			DBDefaultTimeout,
+		)
+		db.Shutdown(ctx)
+		cancel()
+		os.Exit(1)
+	}
 
 	runApplication(logger, server, worker)
 
 	logger.Debug("Shutting down server...")
 
-	shutdownCtx, cancel := context.WithTimeoutCause(
-		context.Background(),
-		cfg.GracefulSHutdowner.GlobalShutdownTimeout,
-		gracefulshutdowner.GlobalTimeoutErr,
-	)
-	defer cancel()
-
-	err = gh.Shutdown(shutdownCtx)
+	err = gs.Shutdown(context.Background())
 	if err != nil {
 		logger.Error("Application has been stopped with errors", "errors", err)
 		return
