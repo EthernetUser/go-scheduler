@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	jobsService "go-scheduler/internal/jobs"
-
-	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type UpdateJobRequest struct {
@@ -27,12 +27,13 @@ type UpdateJobResponse struct {
 // @Param		request	body		UpdateJobRequest	true	"Some ID"
 // @Success	200		{object}	UpdateJobResponse	"ok"
 // @Router		/jobs [put]
-func (h *handlers) Update() gin.HandlerFunc {
+func (h *handlers) Update() http.HandlerFunc {
 	logger := h.logger.WithGroup("handler.update")
-	return func(ctx *gin.Context) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var job UpdateJobRequest
-		if err := ctx.BindJSON(&job); err != nil {
-			ctx.JSON(400, gin.H{"error": err.Error()})
+		if err := json.NewDecoder(r.Body).Decode(&job); err != nil {
+			logger.Error("Failed to parse requet body", "error", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -44,12 +45,12 @@ func (h *handlers) Update() gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		err := h.jobService.UpdateJob(ctx, parsedJob)
+		err := h.jobService.UpdateJob(r.Context(), parsedJob)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
-			ctx.JSON(400, gin.H{"error": err.Error()})
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		ctx.JSON(200, gin.H{"message": "success"})
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

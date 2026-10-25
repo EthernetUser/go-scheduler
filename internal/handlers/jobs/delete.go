@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
+
+const JobIdPathParam string = "jobId"
 
 //	@BasePath	/api/v1
 
@@ -15,27 +16,29 @@ import (
 // @Param		jobId	path		string	true	"Some ID"
 // @Success	200		{string}	string	"ok"
 // @Router		/jobs/{jobId} [delete]
-func (h *handlers) Delete() gin.HandlerFunc {
+func (h *handlers) Delete() http.HandlerFunc {
 	logger := h.logger.WithGroup("handler.delete")
-	return func(ctx *gin.Context) {
-		jobId := ctx.Param("jobId")
+	return func(w http.ResponseWriter, r *http.Request) {
+		jobId := r.PathValue(JobIdPathParam)
 		if jobId == "" {
-			ctx.JSON(400, gin.H{"error": "jobId is required"})
+			logger.Error("Empty jobId")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
 		parsedJobId, err := strconv.Atoi(jobId)
 		if err != nil {
-			ctx.JSON(400, gin.H{"error": err.Error()})
+			logger.Error("jobId is not a number")
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		err = h.jobService.DeleteJob(ctx, parsedJobId)
+		err = h.jobService.DeleteJob(r.Context(), parsedJobId)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
-			ctx.JSON(400, gin.H{"error": err.Error()})
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		ctx.JSON(200, gin.H{"message": "success"})
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

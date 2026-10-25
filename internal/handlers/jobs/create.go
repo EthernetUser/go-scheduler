@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	jobsService "go-scheduler/internal/jobs"
-
-	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 type CreateJobRequest struct {
@@ -17,6 +17,7 @@ type CreateJobResponse struct {
 	Message string `json:"message"`
 }
 
+// TODO: update swagger docs
 //	@BasePath	/api/v1
 
 // @Summary	Add a new job
@@ -26,12 +27,13 @@ type CreateJobResponse struct {
 // @Param		request	body		CreateJobRequest	true	"Some ID"
 // @Success	200		{object}	CreateJobResponse	"ok"
 // @Router		/jobs [post]
-func (h *handlers) Create() gin.HandlerFunc {
+func (h *handlers) Create() http.HandlerFunc {
 	logger := h.logger.WithGroup("handler.create")
-	return func(ctx *gin.Context) {
+	return func(w http.ResponseWriter, r *http.Request) {
 		var job CreateJobRequest
-		if err := ctx.BindJSON(&job); err != nil {
-			ctx.JSON(400, gin.H{"error": err.Error()})
+		if err := json.NewDecoder(r.Body).Decode(&job); err != nil {
+			logger.Error("Failed to parse json body", "error", err)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
@@ -42,12 +44,13 @@ func (h *handlers) Create() gin.HandlerFunc {
 			Url:         job.Url,
 		}
 
-		err := h.jobService.CreateJob(ctx, parsedJob)
+		err := h.jobService.CreateJob(r.Context(), parsedJob)
 		if err != nil {
 			logger.Error("Error occurred", "error", err)
-			ctx.JSON(400, gin.H{"error": err.Error()})
+			//TODO: add checking err type everywhere to provide correct err status code
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		ctx.JSON(200, gin.H{"message": "success"})
+		w.WriteHeader(http.StatusCreated)
 	}
 }

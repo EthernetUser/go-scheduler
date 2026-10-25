@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"go-scheduler/cmd/docs"
 	"go-scheduler/internal/adapters"
 	"go-scheduler/internal/config"
@@ -12,7 +13,6 @@ import (
 	appWorker "go-scheduler/internal/worker"
 	jobExecutor "go-scheduler/internal/worker/executor"
 	robfigcron "go-scheduler/internal/worker/scheduler"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -20,9 +20,9 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	_ "go-scheduler/cmd/docs"
+
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 func main() {
@@ -37,7 +37,7 @@ func main() {
 
 	jobs := jobService.New(db)
 	worker := initWorker(db, cfg, logger)
-	router := initRouterV1(cfg.Env, logger, jobs)
+	router := initRouterV1(logger, jobs)
 	server := createHttpServer(cfg, router)
 
 	runApplication(logger, server, worker)
@@ -156,32 +156,32 @@ func createHttpServer(
 }
 
 func initRouterV1(
-	env string,
 	logger *slog.Logger,
 	jobs *jobService.Jobs,
-) *gin.Engine {
-	gin.DefaultWriter = io.Discard
-	switch env {
-	case "local":
-		gin.SetMode(gin.DebugMode)
-	case "prod":
-		gin.SetMode(gin.ReleaseMode)
-	default:
-		gin.SetMode(gin.ReleaseMode)
-	}
-	router := gin.Default()
-	docs.SwaggerInfo.BasePath = "/api/v1"
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+) *http.ServeMux {
+	router := http.NewServeMux()
+	v1Preffix := "/api/v1"
+	docs.SwaggerInfo.BasePath = v1Preffix
+	router.Handle(
+		"/swagger/",
+		httpSwagger.WrapHandler,
+	)
 
 	slogAdapter := adapters.NewSlogAdapter(logger)
 	handlers := jobHandlers.New(slogAdapter.WithGroup("service"), jobs)
 
-	v1 := router.Group("/api/v1")
 	{
-		v1.POST("/jobs", handlers.Create())
-		v1.DELETE("/jobs/:jobId", handlers.Delete())
-		v1.GET("/jobs", handlers.Get())
-		v1.PUT("/jobs", handlers.Update())
+		router.Handle(fmt.Sprintf("POST %s/jobs", v1Preffix), handlers.Create())
+		router.Handle(
+			fmt.Sprintf(
+				"DELETE %s/jobs/{%s}",
+				v1Preffix,
+				jobHandlers.JobIdPathParam,
+			),
+			handlers.Delete(),
+		)
+		router.Handle(fmt.Sprintf("GET %s/jobs", v1Preffix), handlers.GetAll())
+		router.Handle(fmt.Sprintf("PUT %s/jobs", v1Preffix), handlers.Update())
 	}
 	return router
 }
