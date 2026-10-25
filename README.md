@@ -27,7 +27,7 @@ Swagger: `http://localhost:8080/swagger/index.html`
 |--------|---------------|-----------------|
 | GET    | `/jobs`       | список задач    |
 | POST   | `/jobs`       | создать задачу  |
-| GET    | `/jobs/{id}`  | получить задачу |
+| PUT    | `/jobs`       | обновить задачу |
 | DELETE | `/jobs/{id}`  | удалить задачу  |
 
 Поля задачи: `name`, `description`, `cron`, `url`.
